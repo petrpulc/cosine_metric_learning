@@ -81,7 +81,7 @@ def create_network(images, num_classes=None, add_logits=True, reuse=None,
     features = network
 
     # Features in rows, normalize axis 1.
-    features = tf.nn.l2_normalize(features, dim=1)
+    features = tf.nn.l2_normalize(features, axis=1)
 
     if add_logits:
         with tf.compat.v1.variable_scope("ball", reuse=reuse):
@@ -98,7 +98,7 @@ def create_network(images, num_classes=None, add_logits=True, reuse=None,
             scale = tf.nn.softplus(scale)
 
         # Mean vectors in colums, normalize axis 0.
-        weights_normed = tf.nn.l2_normalize(weights, dim=0)
+        weights_normed = tf.nn.l2_normalize(weights, axis=0)
         logits = scale * tf.matmul(features, weights_normed)
     else:
         logits = None
