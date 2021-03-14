@@ -2,13 +2,14 @@
 import argparse
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
+import tf_slim as slim
 
 from datasets import util
 import queued_trainer
 import metrics
 import losses
 
+tf.compat.v1.disable_eager_execution()
 
 def create_default_argument_parser(dataset_name):
     """Create an argument parser with default arguments.
@@ -240,19 +241,19 @@ def create_trainer(preprocess_fn, network_factory, read_from_file, image_shape,
     num_channels = image_shape[-1] if len(image_shape) == 3 else 1
 
     with tf.device("/cpu:0"):
-        label_var = tf.placeholder(tf.int64, (None,))
+        label_var = tf.compat.v1.placeholder(tf.int64, (None,))
 
         if read_from_file:
             # NOTE(nwojke): tf.image.decode_jpg handles various image types.
-            filename_var = tf.placeholder(tf.string, (None, ))
+            filename_var = tf.compat.v1.placeholder(tf.string, (None, ))
             image_var = tf.map_fn(
                 lambda x: tf.image.decode_jpeg(
-                    tf.read_file(x), channels=num_channels),
+                    tf.io.read_file(x), channels=num_channels),
                 filename_var, back_prop=False, dtype=tf.uint8)
-            image_var = tf.image.resize_images(image_var, image_shape[:2])
+            image_var = tf.image.resize(image_var, image_shape[:2])
             input_vars = [filename_var, label_var]
         else:
-            image_var = tf.placeholder(tf.uint8, (None,) + image_shape)
+            image_var = tf.compat.v1.placeholder(tf.uint8, (None,) + image_shape)
             input_vars = [image_var, label_var]
 
         enqueue_vars = [
@@ -269,25 +270,25 @@ def create_trainer(preprocess_fn, network_factory, read_from_file, image_shape,
     _create_loss(feature_var, logit_var, label_var, mode=loss_mode)
 
     if trainable_scopes is None:
-        variables_to_train = tf.trainable_variables()
+        variables_to_train = tf.compat.v1.trainable_variables()
     else:
         variables_to_train = []
         for scope in trainable_scopes:
-            variables = tf.get_collection(
-                tf.GraphKeys.TRAINABLE_VARIABLES, scope)
+            variables = tf.compat.v1.get_collection(
+                tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope)
             variables_to_train.extend(variables)
 
-    global_step = tf.train.get_or_create_global_step()
+    global_step = tf.compat.v1.train.get_or_create_global_step()
 
-    loss_var = tf.losses.get_total_loss()
+    loss_var = tf.compat.v1.losses.get_total_loss()
     train_op = slim.learning.create_train_op(
-        loss_var, tf.train.AdamOptimizer(learning_rate=learning_rate),
+        loss_var, tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate),
         global_step, summarize_gradients=False,
         variables_to_train=variables_to_train)
     tf.summary.scalar("total_loss", loss_var)
     tf.summary.scalar("learning_rate", learning_rate)
 
-    regularization_var = tf.reduce_sum(tf.losses.get_regularization_loss())
+    regularization_var = tf.reduce_sum(tf.compat.v1.losses.get_regularization_loss())
     tf.summary.scalar("weight_loss", regularization_var)
     return trainer, train_op
 
@@ -367,8 +368,8 @@ def eval_loop(preprocess_fn, network_factory, data_x, data_y, camera_indices,
     with tf.device("/cpu:0"):
         # Feed probe and gallery indices to the trainer.
         num_probes, num_gallery_images = probes.shape[1], galleries.shape[1]
-        probe_idx_var = tf.placeholder(tf.int64, (None, num_probes))
-        gallery_idx_var = tf.placeholder(tf.int64, (None, num_gallery_images))
+        probe_idx_var = tf.compat.v1.placeholder(tf.int64, (None, num_probes))
+        gallery_idx_var = tf.compat.v1.placeholder(tf.int64, (None, num_gallery_images))
         trainer = queued_trainer.QueuedTrainer(
             [probe_idx_var, gallery_idx_var])
 
@@ -387,9 +388,9 @@ def eval_loop(preprocess_fn, network_factory, data_x, data_y, camera_indices,
             num_channels = image_shape[-1] if len(image_shape) == 3 else 1
             probe_x_var = tf.map_fn(
                 lambda x: tf.image.decode_jpeg(
-                    tf.read_file(x), channels=num_channels),
+                    tf.io.read_file(x), channels=num_channels),
                 probe_x_var, dtype=tf.uint8)
-            probe_x_var = tf.image.resize_images(probe_x_var, image_shape[:2])
+            probe_x_var = tf.image.resize(probe_x_var, image_shape[:2])
         probe_x_var = tf.map_fn(
             lambda x: preprocess_fn(x, is_training=False),
             probe_x_var, back_prop=False, dtype=tf.float32)
@@ -401,9 +402,9 @@ def eval_loop(preprocess_fn, network_factory, data_x, data_y, camera_indices,
             num_channels = image_shape[-1] if len(image_shape) == 3 else 1
             gallery_x_var = tf.map_fn(
                 lambda x: tf.image.decode_jpeg(
-                    tf.read_file(x), channels=num_channels),
+                    tf.io.read_file(x), channels=num_channels),
                 gallery_x_var, dtype=tf.uint8)
-            gallery_x_var = tf.image.resize_images(
+            gallery_x_var = tf.image.resize(
                 gallery_x_var, image_shape[:2])
         gallery_x_var = tf.map_fn(
             lambda x: preprocess_fn(x, is_training=False),
@@ -464,17 +465,17 @@ def finalize(preprocess_fn, network_factory, checkpoint_path, image_shape,
         The checkpoint file to write.
 
     """
-    with tf.Session(graph=tf.Graph()) as session:
-        input_var = tf.placeholder(tf.uint8, (None, ) + image_shape)
+    with tf.compat.v1.Session(graph=tf.Graph()) as session:
+        input_var = tf.compat.v1.placeholder(tf.uint8, (None, ) + image_shape)
         image_var = tf.map_fn(
             lambda x: preprocess_fn(x, is_training=False),
             input_var, back_prop=False, dtype=tf.float32)
         network_factory(image_var)
 
-        loader = tf.train.Saver(slim.get_variables_to_restore())
+        loader = tf.compat.v1.train.Saver(slim.get_variables_to_restore())
         loader.restore(session, checkpoint_path)
 
-        saver = tf.train.Saver(slim.get_model_variables())
+        saver = tf.compat.v1.train.Saver(slim.get_model_variables())
         saver.save(session, output_filename, global_step=None)
 
 
@@ -506,8 +507,8 @@ def freeze(preprocess_fn, network_factory, checkpoint_path, image_shape,
         `features`.
 
     """
-    with tf.Session(graph=tf.Graph()) as session:
-        input_var = tf.placeholder(
+    with tf.compat.v1.Session(graph=tf.Graph()) as session:
+        input_var = tf.compat.v1.placeholder(
             tf.uint8, (None, ) + image_shape, name=input_name)
         image_var = tf.map_fn(
             lambda x: preprocess_fn(x, is_training=False),
@@ -515,13 +516,13 @@ def freeze(preprocess_fn, network_factory, checkpoint_path, image_shape,
         features, _ = network_factory(image_var)
         features = tf.identity(features, name=feature_name)
 
-        saver = tf.train.Saver(slim.get_variables_to_restore())
+        saver = tf.compat.v1.train.Saver(slim.get_variables_to_restore())
         saver.restore(session, checkpoint_path)
 
-        output_graph_def = tf.graph_util.convert_variables_to_constants(
-            session, tf.get_default_graph().as_graph_def(),
+        output_graph_def = tf.compat.v1.graph_util.convert_variables_to_constants(
+            session, tf.compat.v1.get_default_graph().as_graph_def(),
             [features.name.split(":")[0]])
-        with tf.gfile.GFile(output_filename, "wb") as file_handle:
+        with tf.compat.v1.gfile.GFile(output_filename, "wb") as file_handle:
             file_handle.write(output_graph_def.SerializeToString())
 
 
@@ -574,14 +575,14 @@ def _create_encoder(preprocess_fn, network_factory, image_shape, batch_size=32,
                     session=None, checkpoint_path=None, read_from_file=False):
     if read_from_file:
         num_channels = image_shape[-1] if len(image_shape) == 3 else 1
-        input_var = tf.placeholder(tf.string, (None, ))
+        input_var = tf.compat.v1.placeholder(tf.string, (None, ))
         image_var = tf.map_fn(
             lambda x: tf.image.decode_jpeg(
-                tf.read_file(x), channels=num_channels),
+                tf.io.read_file(x), channels=num_channels),
             input_var, back_prop=False, dtype=tf.uint8)
-        image_var = tf.image.resize_images(image_var, image_shape[:2])
+        image_var = tf.image.resize(image_var, image_shape[:2])
     else:
-        input_var = tf.placeholder(tf.uint8, (None, ) + image_shape)
+        input_var = tf.compat.v1.placeholder(tf.uint8, (None, ) + image_shape)
         image_var = input_var
 
     preprocessed_image_var = tf.map_fn(
@@ -592,9 +593,9 @@ def _create_encoder(preprocess_fn, network_factory, image_shape, batch_size=32,
     feature_dim = feature_var.get_shape().as_list()[-1]
 
     if session is None:
-        session = tf.Session()
+        session = tf.compat.v1.Session()
     if checkpoint_path is not None:
-        tf.train.get_or_create_global_step()
+        tf.compat.v1.train.get_or_create_global_step()
         init_assign_op, init_feed_dict = slim.assign_from_checkpoint(
             checkpoint_path, slim.get_model_variables())
         session.run(init_assign_op, feed_dict=init_feed_dict)

@@ -1,6 +1,6 @@
 # vim: expandtab:ts=4:sw=4
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
+import tf_slim as slim
 
 from . import residual_net
 
@@ -8,15 +8,15 @@ from . import residual_net
 def create_network(images, num_classes=None, add_logits=True, reuse=None,
                    create_summaries=True, weight_decay=1e-8):
     nonlinearity = tf.nn.elu
-    conv_weight_init = tf.truncated_normal_initializer(stddev=1e-3)
+    conv_weight_init = tf.compat.v1.truncated_normal_initializer(stddev=1e-3)
     conv_bias_init = tf.zeros_initializer()
     conv_regularizer = slim.l2_regularizer(weight_decay)
-    fc_weight_init = tf.truncated_normal_initializer(stddev=1e-3)
+    fc_weight_init = tf.compat.v1.truncated_normal_initializer(stddev=1e-3)
     fc_bias_init = tf.zeros_initializer()
     fc_regularizer = slim.l2_regularizer(weight_decay)
 
     def batch_norm_fn(x):
-        return slim.batch_norm(x, scope=tf.get_variable_scope().name + "/bn")
+        return slim.batch_norm(x, scope=tf.compat.v1.get_variable_scope().name + "/bn")
 
     network = images
     network = slim.conv2d(
@@ -84,14 +84,14 @@ def create_network(images, num_classes=None, add_logits=True, reuse=None,
     features = tf.nn.l2_normalize(features, dim=1)
 
     if add_logits:
-        with slim.variable_scope.variable_scope("ball", reuse=reuse):
+        with tf.compat.v1.variable_scope("ball", reuse=reuse):
             weights = slim.model_variable(
                 "mean_vectors", (feature_dim, int(num_classes)),
-                initializer=tf.truncated_normal_initializer(stddev=1e-3),
+                initializer=tf.compat.v1.truncated_normal_initializer(stddev=1e-3),
                 regularizer=None)
             scale = slim.model_variable(
                 "scale", (), tf.float32,
-                initializer=tf.constant_initializer(0., tf.float32),
+                initializer=tf.constant_initializer(0.),
                 regularizer=slim.l2_regularizer(1e-1))
             if create_summaries:
                 tf.summary.scalar("scale", scale)

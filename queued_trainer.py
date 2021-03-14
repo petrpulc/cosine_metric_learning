@@ -5,7 +5,7 @@ import threading
 import numpy as np
 
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
+import tf_slim as slim
 
 
 def run_in_batches(f, data_dict, out, batch_size):
@@ -313,7 +313,7 @@ class QueuedTrainer(object):
 
         shapes = [var.get_shape().as_list()[1:] for var in enqueue_vars]
         dtypes = [var.dtype for var in enqueue_vars]
-        self._queue = tf.FIFOQueue(queue_capacity, dtypes, shapes)
+        self._queue = tf.queue.FIFOQueue(queue_capacity, dtypes, shapes)
 
         self._num_enqueue_threads = num_enqueue_threads
         self._enqueue_threads = []
@@ -401,7 +401,7 @@ class QueuedTrainer(object):
         print("Log directory: ", log_dir)
         print("---------------------------------------")
 
-        saver = tf.train.Saver(max_to_keep=max_checkpoints_to_keep)
+        saver = tf.compat.v1.train.Saver(max_to_keep=max_checkpoints_to_keep)
         try:
             slim.learning.train(
                 train_op, log_dir, self._train_step_fn, saver=saver,
@@ -483,16 +483,16 @@ class QueuedTrainer(object):
             print("---------------------------------------")
 
         if summary_op is None:
-            summary_op = tf.summary.merge_all()
+            summary_op = tf.compat.v1.summary.merge_all()
 
-        global_step = tf.train.get_or_create_global_step()
+        global_step = tf.compat.v1.train.get_or_create_global_step()
 
         if variables_to_restore is None:
             variables_to_restore = slim.get_variables_to_restore()
-        saver = tf.train.Saver(variables_to_restore)
-        summary_writer = tf.summary.FileWriter(log_dir)
-        sv = tf.train.Supervisor(
-            graph=tf.get_default_graph(), logdir=log_dir, summary_op=None,
+        saver = tf.compat.v1.train.Saver(variables_to_restore)
+        summary_writer = tf.compat.v1.summary.FileWriter(log_dir)
+        sv = tf.compat.v1.train.Supervisor(
+            graph=tf.compat.v1.get_default_graph(), logdir=log_dir, summary_op=None,
             summary_writer=None, global_step=None, saver=saver)
 
         print("Entering evaluation loop. Waiting for checkpoints.")
