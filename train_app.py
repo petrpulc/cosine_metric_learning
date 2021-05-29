@@ -1,15 +1,18 @@
 # vim: expandtab:ts=4:sw=4
 import argparse
+from typing import Tuple
+
 import numpy as np
-import tensorflow as tf
+import tensorflow._api.v2.compat.v1 as tf
 import tf_slim as slim
 
-from datasets import util
-import queued_trainer
-import metrics
 import losses
+import metrics
+import queued_trainer
+from datasets import util
 
-tf.compat.v1.disable_eager_execution()
+tf.disable_eager_execution()
+
 
 def create_default_argument_parser(dataset_name):
     """Create an argument parser with default arguments.
@@ -37,7 +40,7 @@ def create_default_argument_parser(dataset_name):
         default="/tmp/%s_evaldir" % dataset_name)
     parser.add_argument(
         "--number_of_steps", help="Number of train/eval steps. If None given, "
-        "runs indefenitely", default=None, type=int)
+                                  "runs indefenitely", default=None, type=int)
     parser.add_argument(
         "--log_dir", help="Log and checkpoints directory.",
         default="/tmp/%s_logdir" % dataset_name)
@@ -49,10 +52,10 @@ def create_default_argument_parser(dataset_name):
         type=str, default="train")
     parser.add_argument(
         "--restore_path", help="If not None, resume training of a given "
-        "checkpoint (mode 'train').", default=None)
+                               "checkpoint (mode 'train').", default=None)
     parser.add_argument(
         "--run_id", help="An optional run-id. If None given, a new one is "
-        "created", type=str, default=None)
+                         "created", type=str, default=None)
     return parser
 
 
@@ -110,7 +113,7 @@ def to_eval_kwargs(args):
 
 
 def train_loop(preprocess_fn, network_factory, train_x, train_y,
-               num_images_per_id, batch_size, log_dir, image_shape=None,
+               num_images_per_id, batch_size, log_dir, image_shape: Tuple[int, int, int] = None,
                restore_path=None, exclude_from_restore=None, run_id=None,
                number_of_steps=None, loss_mode="cosine-softmax",
                learning_rate=1e-3, trainable_scopes=None,
@@ -200,7 +203,7 @@ def train_loop(preprocess_fn, network_factory, train_x, train_y,
         save_interval_secs=save_interval_secs, number_of_steps=number_of_steps)
 
 
-def create_trainer(preprocess_fn, network_factory, read_from_file, image_shape,
+def create_trainer(preprocess_fn, network_factory, read_from_file, image_shape: Tuple[int, int, int],
                    batch_size, loss_mode, learning_rate=1e-3,
                    trainable_scopes=None):
     """Create trainer.
@@ -241,11 +244,11 @@ def create_trainer(preprocess_fn, network_factory, read_from_file, image_shape,
     num_channels = image_shape[-1] if len(image_shape) == 3 else 1
 
     with tf.device("/cpu:0"):
-        label_var = tf.compat.v1.placeholder(tf.int64, (None,))
+        label_var = tf.placeholder(tf.int64, (None,))
 
         if read_from_file:
             # NOTE(nwojke): tf.image.decode_jpg handles various image types.
-            filename_var = tf.compat.v1.placeholder(tf.string, (None, ))
+            filename_var = tf.placeholder(tf.string, (None,))
             image_var = tf.map_fn(
                 lambda x: tf.image.decode_jpeg(
                     tf.io.read_file(x), channels=num_channels),
@@ -253,7 +256,7 @@ def create_trainer(preprocess_fn, network_factory, read_from_file, image_shape,
             image_var = tf.image.resize(image_var, image_shape[:2])
             input_vars = [filename_var, label_var]
         else:
-            image_var = tf.compat.v1.placeholder(tf.uint8, (None,) + image_shape)
+            image_var = tf.placeholder(tf.uint8, (None,) + image_shape)
             input_vars = [image_var, label_var]
 
         enqueue_vars = [
@@ -270,31 +273,31 @@ def create_trainer(preprocess_fn, network_factory, read_from_file, image_shape,
     _create_loss(feature_var, logit_var, label_var, mode=loss_mode)
 
     if trainable_scopes is None:
-        variables_to_train = tf.compat.v1.trainable_variables()
+        variables_to_train = tf.trainable_variables()
     else:
         variables_to_train = []
         for scope in trainable_scopes:
-            variables = tf.compat.v1.get_collection(
-                tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope)
+            variables = tf.get_collection(
+                tf.GraphKeys.TRAINABLE_VARIABLES, scope)
             variables_to_train.extend(variables)
 
-    global_step = tf.compat.v1.train.get_or_create_global_step()
+    global_step = tf.train.get_or_create_global_step()
 
-    loss_var = tf.compat.v1.losses.get_total_loss()
+    loss_var = tf.losses.get_total_loss()
     train_op = slim.learning.create_train_op(
-        loss_var, tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate),
+        loss_var, tf.train.AdamOptimizer(learning_rate=learning_rate),
         global_step, summarize_gradients=False,
         variables_to_train=variables_to_train)
     tf.summary.scalar("total_loss", loss_var)
     tf.summary.scalar("learning_rate", learning_rate)
 
-    regularization_var = tf.reduce_sum(tf.compat.v1.losses.get_regularization_loss())
+    regularization_var = tf.reduce_sum(tf.losses.get_regularization_loss())
     tf.summary.scalar("weight_loss", regularization_var)
     return trainer, train_op
 
 
 def eval_loop(preprocess_fn, network_factory, data_x, data_y, camera_indices,
-              log_dir, eval_log_dir, image_shape=None, run_id=None,
+              log_dir, eval_log_dir, image_shape: Tuple[int, int, int] = None, run_id=None,
               loss_mode="cosine-softmax", num_galleries=10, random_seed=4321):
     """Evaluate a running training session using CMC metric averaged over
     `num_galleries` galleries where each gallery contains for every identity a
@@ -368,8 +371,8 @@ def eval_loop(preprocess_fn, network_factory, data_x, data_y, camera_indices,
     with tf.device("/cpu:0"):
         # Feed probe and gallery indices to the trainer.
         num_probes, num_gallery_images = probes.shape[1], galleries.shape[1]
-        probe_idx_var = tf.compat.v1.placeholder(tf.int64, (None, num_probes))
-        gallery_idx_var = tf.compat.v1.placeholder(tf.int64, (None, num_gallery_images))
+        probe_idx_var = tf.placeholder(tf.int64, (None, num_probes))
+        gallery_idx_var = tf.placeholder(tf.int64, (None, num_gallery_images))
         trainer = queued_trainer.QueuedTrainer(
             [probe_idx_var, gallery_idx_var])
 
@@ -443,7 +446,7 @@ def eval_loop(preprocess_fn, network_factory, data_x, data_y, camera_indices,
         eval_op=list(names_to_updates.values()), eval_interval_secs=60)
 
 
-def finalize(preprocess_fn, network_factory, checkpoint_path, image_shape,
+def finalize(preprocess_fn, network_factory, checkpoint_path, image_shape: Tuple[int, int, int],
              output_filename):
     """Finalize model, i.e., strip off training variables and only save model
     variables to checkpoint file.
@@ -465,21 +468,21 @@ def finalize(preprocess_fn, network_factory, checkpoint_path, image_shape,
         The checkpoint file to write.
 
     """
-    with tf.compat.v1.Session(graph=tf.Graph()) as session:
-        input_var = tf.compat.v1.placeholder(tf.uint8, (None, ) + image_shape)
+    with tf.Session(graph=tf.Graph()) as session:
+        input_var = tf.placeholder(tf.uint8, (None,) + image_shape)
         image_var = tf.map_fn(
             lambda x: preprocess_fn(x, is_training=False),
             input_var, back_prop=False, dtype=tf.float32)
         network_factory(image_var)
 
-        loader = tf.compat.v1.train.Saver(slim.get_variables_to_restore())
+        loader = tf.train.Saver(slim.get_variables_to_restore())
         loader.restore(session, checkpoint_path)
 
-        saver = tf.compat.v1.train.Saver(slim.get_model_variables())
+        saver = tf.train.Saver(slim.get_model_variables())
         saver.save(session, output_filename, global_step=None)
 
 
-def freeze(preprocess_fn, network_factory, checkpoint_path, image_shape,
+def freeze(preprocess_fn, network_factory, checkpoint_path, image_shape: Tuple[int, int, int],
            output_filename, input_name="images", feature_name="features"):
     """Write frozen inference graph that takes as input a list of images and
     returns their feature representation.
@@ -507,27 +510,27 @@ def freeze(preprocess_fn, network_factory, checkpoint_path, image_shape,
         `features`.
 
     """
-    with tf.compat.v1.Session(graph=tf.Graph()) as session:
-        input_var = tf.compat.v1.placeholder(
-            tf.uint8, (None, ) + image_shape, name=input_name)
+    with tf.Session(graph=tf.Graph()) as session:
+        input_var = tf.placeholder(
+            tf.uint8, (None,) + image_shape, name=input_name)
         image_var = tf.map_fn(
             lambda x: preprocess_fn(x, is_training=False),
             input_var, back_prop=False, dtype=tf.float32)
         features, _ = network_factory(image_var)
         features = tf.identity(features, name=feature_name)
 
-        saver = tf.compat.v1.train.Saver(slim.get_variables_to_restore())
+        saver = tf.train.Saver(slim.get_variables_to_restore())
         saver.restore(session, checkpoint_path)
 
-        output_graph_def = tf.compat.v1.graph_util.convert_variables_to_constants(
-            session, tf.compat.v1.get_default_graph().as_graph_def(),
+        output_graph_def = tf.graph_util.convert_variables_to_constants(
+            session, tf.get_default_graph().as_graph_def(),
             [features.name.split(":")[0]])
-        with tf.compat.v1.gfile.GFile(output_filename, "wb") as file_handle:
+        with tf.gfile.GFile(output_filename, "wb") as file_handle:
             file_handle.write(output_graph_def.SerializeToString())
 
 
 def encode(preprocess_fn, network_factory, checkpoint_path, images_or_filenames,
-           batch_size=32, session=None, image_shape=None):
+           batch_size=32, session=None, image_shape: Tuple[int, int, int] = None):
     """
 
     Parameters
@@ -575,14 +578,14 @@ def _create_encoder(preprocess_fn, network_factory, image_shape, batch_size=32,
                     session=None, checkpoint_path=None, read_from_file=False):
     if read_from_file:
         num_channels = image_shape[-1] if len(image_shape) == 3 else 1
-        input_var = tf.compat.v1.placeholder(tf.string, (None, ))
+        input_var = tf.placeholder(tf.string, (None,))
         image_var = tf.map_fn(
             lambda x: tf.image.decode_jpeg(
                 tf.io.read_file(x), channels=num_channels),
             input_var, back_prop=False, dtype=tf.uint8)
         image_var = tf.image.resize(image_var, image_shape[:2])
     else:
-        input_var = tf.compat.v1.placeholder(tf.uint8, (None, ) + image_shape)
+        input_var = tf.placeholder(tf.uint8, (None,) + image_shape)
         image_var = input_var
 
     preprocessed_image_var = tf.map_fn(
@@ -593,9 +596,9 @@ def _create_encoder(preprocess_fn, network_factory, image_shape, batch_size=32,
     feature_dim = feature_var.get_shape().as_list()[-1]
 
     if session is None:
-        session = tf.compat.v1.Session()
+        session = tf.Session()
     if checkpoint_path is not None:
-        tf.compat.v1.train.get_or_create_global_step()
+        tf.train.get_or_create_global_step()
         init_assign_op, init_feed_dict = slim.assign_from_checkpoint(
             checkpoint_path, slim.get_model_variables())
         session.run(init_assign_op, feed_dict=init_feed_dict)

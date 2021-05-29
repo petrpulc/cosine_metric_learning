@@ -139,7 +139,7 @@ def create_cmc_probe_and_gallery(data_y, camera_indices=None, seed=None):
     """
     data_y = np.asarray(data_y)
     if camera_indices is None:
-        camera_indices = np.zeros_like(data_y, dtype=np.int)
+        camera_indices = np.zeros_like(data_y, dtype=int)
     camera_indices = np.asarray(camera_indices)
 
     random_generator = np.random.RandomState(seed=seed)

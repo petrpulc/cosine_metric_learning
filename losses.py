@@ -1,13 +1,13 @@
 # vim: expandtab:ts=4:sw=4
-import tensorflow as tf
+import tensorflow._api.v2.compat.v1 as tf
 
 
 def _pdist(a, b=None):
-    sq_sum_a = tf.compat.v1.reduce_sum(tf.square(a), reduction_indices=[1])
+    sq_sum_a = tf.reduce_sum(tf.square(a), reduction_indices=[1])
     if b is None:
         return -2 * tf.matmul(a, tf.transpose(a)) + \
             tf.reshape(sq_sum_a, (-1, 1)) + tf.reshape(sq_sum_a, (1, -1))
-    sq_sum_b = tf.compat.v1.reduce_sum(tf.square(b), reduction_indices=[1])
+    sq_sum_b = tf.reduce_sum(tf.square(b), reduction_indices=[1])
     return -2 * tf.matmul(a, tf.transpose(b)) + \
         tf.reshape(sq_sum_a, (-1, 1)) + tf.reshape(sq_sum_b, (1, -1))
 
@@ -46,7 +46,7 @@ def softmargin_triplet_loss(features, labels, create_summaries=True):
     label_mat = tf.cast(tf.equal(
         tf.reshape(labels, (-1, 1)), tf.reshape(labels, (1, -1))), tf.float32)
 
-    positive_distance = tf.compat.v1.reduce_max(label_mat * distance_mat, axis=1)
+    positive_distance = tf.reduce_max(label_mat * distance_mat, axis=1)
     negative_distance = tf.reduce_min(
         (label_mat * almost_inf) + distance_mat, axis=1)
     loss = tf.nn.softplus(positive_distance - negative_distance)
@@ -60,7 +60,7 @@ def softmargin_triplet_loss(features, labels, create_summaries=True):
         tf.summary.scalar("fraction_active_triplets", fraction_active_triplets)
 
         embedding_squared_norm = tf.reduce_mean(
-            tf.compat.v1.reduce_sum(tf.square(features), axis=1))
+            tf.reduce_sum(tf.square(features), axis=1))
         tf.summary.scalar("mean squared feature norm", embedding_squared_norm)
 
         mean_distance = tf.reduce_mean(distance_mat)
@@ -120,24 +120,24 @@ def magnet_loss(features, labels, margin=1.0, unique_labels=None):
 
     # If class_means is None, compute from batch data.
     if num_per_class is None:
-        num_per_class = tf.compat.v1.reduce_sum(y_mat, reduction_indices=[0])
-    class_means = tf.compat.v1.reduce_sum(
+        num_per_class = tf.reduce_sum(y_mat, reduction_indices=[0])
+    class_means = tf.reduce_sum(
         tf.expand_dims(tf.transpose(y_mat), -1) * tf.expand_dims(features, 0),
         reduction_indices=[1]) / tf.expand_dims(num_per_class, -1)
 
     squared_distance = _pdist(features, class_means)
 
     num_samples = tf.cast(tf.shape(labels)[0], tf.float32)
-    variance = tf.compat.v1.reduce_sum(
+    variance = tf.reduce_sum(
         y_mat * squared_distance) / (num_samples - one)
 
     const = one / (minus_two * (variance + eps))
     linear = const * squared_distance - y_mat * margin
 
-    maxi = tf.compat.v1.reduce_max(linear, reduction_indices=[1], keepdims=True)
+    maxi = tf.reduce_max(linear, reduction_indices=[1], keepdims=True)
     loss_mat = tf.exp(linear - maxi)
 
-    a = tf.compat.v1.reduce_sum(y_mat * loss_mat, reduction_indices=[1])
-    b = tf.compat.v1.reduce_sum((one - y_mat) * loss_mat, reduction_indices=[1])
-    loss = tf.maximum(nil, -tf.compat.v1.log(eps + a / (eps + b)))
+    a = tf.reduce_sum(y_mat * loss_mat, reduction_indices=[1])
+    b = tf.reduce_sum((one - y_mat) * loss_mat, reduction_indices=[1])
+    loss = tf.maximum(nil, -tf.log(eps + a / (eps + b)))
     return tf.reduce_mean(loss), class_means, variance

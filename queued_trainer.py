@@ -4,7 +4,7 @@ import os
 import threading
 import numpy as np
 
-import tensorflow as tf
+import tensorflow._api.v2.compat.v1 as tf
 import tf_slim as slim
 
 
@@ -32,7 +32,7 @@ def run_in_batches(f, data_dict, out, batch_size):
 
     def pad(x):
         x = np.asarray(x)
-        y = np.full((batch_size, ) + x.shape[1:], x[0], dtype=x.dtype)
+        y = np.full((batch_size,) + x.shape[1:], x[0], dtype=x.dtype)
         y[:x.shape[0]] = x
         return y
 
@@ -156,8 +156,8 @@ def random_sample_identities_forever(batch_size, num_samples_per_id, data_x,
             len(unique_y), num_ids_per_batch, replace=False)
         batch_unique_y = unique_y[indices]
 
-        batch_x = np.zeros((batch_size, ) + data_x.shape[1:], data_x.dtype)
-        batch_y = np.zeros((batch_size, ), data_y.dtype)
+        batch_x = np.zeros((batch_size,) + data_x.shape[1:], data_x.dtype)
+        batch_y = np.zeros((batch_size,), data_y.dtype)
         e = 0
         for i, y in enumerate(batch_unique_y):
             num_samples = min(num_samples_per_id, len(y_to_idx[y]))
@@ -401,7 +401,7 @@ class QueuedTrainer(object):
         print("Log directory: ", log_dir)
         print("---------------------------------------")
 
-        saver = tf.compat.v1.train.Saver(max_to_keep=max_checkpoints_to_keep)
+        saver = tf.train.Saver(max_to_keep=max_checkpoints_to_keep)
         try:
             slim.learning.train(
                 train_op, log_dir, self._train_step_fn, saver=saver,
@@ -483,16 +483,16 @@ class QueuedTrainer(object):
             print("---------------------------------------")
 
         if summary_op is None:
-            summary_op = tf.compat.v1.summary.merge_all()
+            summary_op = tf.summary.merge_all()
 
-        global_step = tf.compat.v1.train.get_or_create_global_step()
+        global_step = tf.train.get_or_create_global_step()
 
         if variables_to_restore is None:
             variables_to_restore = slim.get_variables_to_restore()
-        saver = tf.compat.v1.train.Saver(variables_to_restore)
-        summary_writer = tf.compat.v1.summary.FileWriter(log_dir)
-        sv = tf.compat.v1.train.Supervisor(
-            graph=tf.compat.v1.get_default_graph(), logdir=log_dir, summary_op=None,
+        saver = tf.train.Saver(variables_to_restore)
+        summary_writer = tf.summary.FileWriter(log_dir)
+        sv = tf.train.Supervisor(
+            graph=tf.get_default_graph(), logdir=log_dir, summary_op=None,
             summary_writer=None, global_step=None, saver=saver)
 
         print("Entering evaluation loop. Waiting for checkpoints.")
@@ -566,7 +566,7 @@ class QueuedTrainer(object):
             num_threads = self._num_enqueue_threads
         for _ in range(num_threads):
             thread = threading.Thread(
-                target=self._run_enqueue_thread, args=(session, ))
+                target=self._run_enqueue_thread, args=(session,))
             thread.start()
             self._enqueue_threads.append(thread)
 

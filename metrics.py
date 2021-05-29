@@ -1,5 +1,5 @@
 # vim: expandtab:ts=4:sw=4
-import tensorflow as tf
+import tensorflow._api.v2.compat.v1 as tf
 import tf_slim as slim
 
 
