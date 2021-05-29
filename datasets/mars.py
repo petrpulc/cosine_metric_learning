@@ -38,7 +38,7 @@ def read_train_test_directory_to_str(directory):
     for dirname in dirnames:
         filenames = os.listdir(os.path.join(directory, dirname))
         filenames = [
-            f for f in filenames if os.path.splitext(f)[1] == ".jpg"]
+            f for f in filenames if os.path.splitext(f)[1] == ".png"]
         image_filenames += [
             os.path.join(directory, dirname, f) for f in filenames]
         ids += [to_label(dirname) for _ in filenames]

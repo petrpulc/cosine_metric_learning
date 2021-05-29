@@ -9,7 +9,7 @@ from datasets import util
 import nets.deep_sort.network_definition as net
 
 
-IMAGE_SHAPE = 128, 64, 3
+IMAGE_SHAPE = 128, 64, 4
 
 
 class Mars(object):
