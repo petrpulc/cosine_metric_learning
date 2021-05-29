@@ -1,4 +1,5 @@
 # vim: expandtab:ts=4:sw=4
+import glob
 import string
 import os
 import threading
@@ -501,8 +502,10 @@ class QueuedTrainer(object):
 
         final_op_value = None
         num_evaluations = 0
-        for checkpoint_path in slim.evaluation.checkpoints_iterator(
-                checkpoint_dir, eval_interval_secs):
+        path_prefix = os.path.join(checkpoint_dir, "model.ckpt-")
+        for checkpoint_path in [f"{path_prefix}{i}" for i in
+                                sorted(int(x[len(path_prefix):-5]) for x in
+                                       glob.glob(os.path.join(checkpoint_dir, "model.ckpt*.meta")))]:
             with sv.managed_session(start_standard_services=False) as session:
                 sv.saver.restore(session, checkpoint_path)
                 sv.start_queue_runners(session)
