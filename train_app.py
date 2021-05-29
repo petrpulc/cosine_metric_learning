@@ -250,7 +250,7 @@ def create_trainer(preprocess_fn, network_factory, read_from_file, image_shape: 
             # NOTE(nwojke): tf.image.decode_jpg handles various image types.
             filename_var = tf.placeholder(tf.string, (None,))
             image_var = tf.map_fn(
-                lambda x: tf.image.decode_jpeg(
+                lambda x: tf.image.decode_png(
                     tf.io.read_file(x), channels=num_channels),
                 filename_var, back_prop=False, dtype=tf.uint8)
             image_var = tf.image.resize(image_var, image_shape[:2])
@@ -390,7 +390,7 @@ def eval_loop(preprocess_fn, network_factory, data_x, data_y, camera_indices,
             # NOTE(nwojke): tf.image.decode_jpg handles various image types.
             num_channels = image_shape[-1] if len(image_shape) == 3 else 1
             probe_x_var = tf.map_fn(
-                lambda x: tf.image.decode_jpeg(
+                lambda x: tf.image.decode_png(
                     tf.io.read_file(x), channels=num_channels),
                 probe_x_var, dtype=tf.uint8)
             probe_x_var = tf.image.resize(probe_x_var, image_shape[:2])
@@ -404,7 +404,7 @@ def eval_loop(preprocess_fn, network_factory, data_x, data_y, camera_indices,
             # NOTE(nwojke): tf.image.decode_jpg handles various image types.
             num_channels = image_shape[-1] if len(image_shape) == 3 else 1
             gallery_x_var = tf.map_fn(
-                lambda x: tf.image.decode_jpeg(
+                lambda x: tf.image.decode_png(
                     tf.io.read_file(x), channels=num_channels),
                 gallery_x_var, dtype=tf.uint8)
             gallery_x_var = tf.image.resize(
@@ -580,7 +580,7 @@ def _create_encoder(preprocess_fn, network_factory, image_shape, batch_size=32,
         num_channels = image_shape[-1] if len(image_shape) == 3 else 1
         input_var = tf.placeholder(tf.string, (None,))
         image_var = tf.map_fn(
-            lambda x: tf.image.decode_jpeg(
+            lambda x: tf.image.decode_png(
                 tf.io.read_file(x), channels=num_channels),
             input_var, back_prop=False, dtype=tf.uint8)
         image_var = tf.image.resize(image_var, image_shape[:2])
