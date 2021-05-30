@@ -140,7 +140,7 @@ def random_sample_identities_forever(batch_size, num_samples_per_id, data_x,
         `batch_size`.
 
     """
-    assert (batch_size - num_fa_images) % num_samples_per_id == 0
+    assert (batch_size - num_fa_images) % num_samples_per_id == 0, "num_images_per_id has to divide batch_size"
     num_ids_per_batch = int((batch_size - num_fa_images) / num_samples_per_id)
 
     data_x = np.asarray(data_x)

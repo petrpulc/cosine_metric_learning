@@ -8,7 +8,6 @@ from datasets import mars
 from datasets import util
 import nets.deep_sort.network_definition as net
 
-
 IMAGE_SHAPE = 128, 64, 4
 
 
@@ -27,7 +26,7 @@ class Mars(object):
 
         filenames = [filenames[i] for i in train_indices]
         ids = [ids[i] for i in train_indices]
-        camera_indices = [camera_indices[i] for i in  train_indices]
+        camera_indices = [camera_indices[i] for i in train_indices]
         return filenames, ids, camera_indices
 
     def read_validation(self):
