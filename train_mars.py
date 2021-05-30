@@ -40,6 +40,12 @@ class Mars(object):
         camera_indices = [camera_indices[i] for i in valid_indices]
         return filenames, ids, camera_indices
 
+    def read_test(self):
+        filenames, ids, camera_indices, _ = mars.read_test_split_to_str(
+            self._dataset_dir)
+
+        return filenames, ids, camera_indices
+
     def read_test_filenames(self):
         filename = os.path.join(self._dataset_dir, "info", "test_name.txt")
         with open(filename, "r") as file_handle:
@@ -93,6 +99,18 @@ def main():
         eval_kwargs = train_app.to_eval_kwargs(args)
         train_app.eval_loop(
             net.preprocess, network_factory, valid_x, valid_y, camera_indices,
+            image_shape=IMAGE_SHAPE, num_galleries=20, **eval_kwargs)
+    elif args.mode == "test":
+        test_x, test_y, camera_indices = dataset.read_test()
+        print("Validation set size: %d images, %d identities" % (
+            len(test_x), len(np.unique(test_y))))
+
+        network_factory = net.create_network_factory(
+            is_training=False, num_classes=mars.MAX_LABEL + 1,
+            add_logits=args.loss_mode == "cosine-softmax")
+        eval_kwargs = train_app.to_eval_kwargs(args)
+        train_app.eval_loop(
+            net.preprocess, network_factory, test_x, test_y, camera_indices,
             image_shape=IMAGE_SHAPE, num_galleries=20, **eval_kwargs)
     elif args.mode == "export":
         filenames = dataset.read_test_filenames()
