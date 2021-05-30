@@ -70,6 +70,18 @@ def main():
         train_app.train_loop(
             net.preprocess, network_factory, train_x, train_y,
             num_images_per_id=4, image_shape=IMAGE_SHAPE, **train_kwargs)
+    elif args.mode == "retrain":
+        train_x, train_y, _ = dataset.read_train()
+        print("Train set size: %d images, %d identities" % (
+            len(train_x), len(np.unique(train_y))))
+
+        network_factory = net.create_network_factory(
+            is_training=True, num_classes=mars.MAX_LABEL + 1,
+            add_logits=args.loss_mode == "cosine-softmax")
+        train_kwargs = train_app.to_train_kwargs(args)
+        train_app.train_loop(
+            net.preprocess, network_factory, train_x, train_y,
+            num_images_per_id=4 , image_shape=IMAGE_SHAPE, exclude_from_restore=['ball/mean_vectors'], **train_kwargs)
     elif args.mode == "eval":
         valid_x, valid_y, camera_indices = dataset.read_validation()
         print("Validation set size: %d images, %d identities" % (
